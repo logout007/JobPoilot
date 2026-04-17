@@ -1,0 +1,31 @@
+{
+  "name": "jobpilot-engine",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "npm ci --omit=dev && powershell -Command \"Compress-Archive -Force -Path handler.js,dashboard-api.js,package.json,node_modules -DestinationPath lambda.zip\"",
+    "build:scanner": "powershell -Command \"if (Test-Path build/scanner) { Remove-Item -Recurse -Force build/scanner }; New-Item -ItemType Directory -Force -Path build/scanner/scanner | Out-Null; Copy-Item -Recurse src/scanner/* build/scanner/scanner/; Copy-Item -Recurse src/shared build/scanner/shared; Copy-Item package.json,package-lock.json build/scanner/; Set-Location build/scanner; npm install --production --omit=dev; Compress-Archive -Path * -DestinationPath ../scanner.zip -Force\"",
+    "build:evaluator": "powershell -Command \"if (Test-Path build/evaluator) { Remove-Item -Recurse -Force build/evaluator }; New-Item -ItemType Directory -Force -Path build/evaluator/evaluator | Out-Null; Copy-Item -Recurse src/evaluator/* build/evaluator/evaluator/; Copy-Item -Recurse src/shared build/evaluator/shared; Copy-Item package.json,package-lock.json build/evaluator/; Set-Location build/evaluator; npm install --production --omit=dev; Compress-Archive -Path * -DestinationPath ../evaluator.zip -Force\"",
+    "build:api": "powershell -Command \"if (Test-Path build/api) { Remove-Item -Recurse -Force build/api }; New-Item -ItemType Directory -Force -Path build/api/api | Out-Null; Copy-Item -Recurse src/api/* build/api/api/; Copy-Item -Recurse src/shared build/api/shared; Copy-Item package.json,package-lock.json build/api/; Set-Location build/api; npm install --production --omit=dev; Compress-Archive -Path * -DestinationPath ../api.zip -Force\"",
+    "build:all": "npm run build:scanner && npm run build:evaluator && npm run build:api && npm run build",
+    "deploy": "powershell -Command \"Set-Location infra; terraform apply -auto-approve\"",
+    "test": "vitest --run"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.600.0",
+    "@aws-sdk/client-s3": "^3.600.0",
+    "@aws-sdk/client-ses": "^3.600.0",
+    "@aws-sdk/client-ssm": "^3.600.0",
+    "@aws-sdk/util-dynamodb": "^3.996.2",
+    "@google/genai": "^1.50.1",
+    "@google/generative-ai": "^0.21.0",
+    "@sparticuz/chromium": "^123.0.1",
+    "marked": "^12.0.0",
+    "puppeteer-core": "^22.6.5"
+  },
+  "devDependencies": {
+    "aws-sdk-client-mock": "^4.1.0",
+    "fast-check": "^3.19.0",
+    "vitest": "^1.6.0"
+  }
+}

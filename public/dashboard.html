@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JobPilot V3 — Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  
+  body {
+    font-family: 'Inter', sans-serif;
+  }
+  
+  .grade-badge {
+    @apply inline-flex items-center justify-center w-10 h-10 rounded-full font-bold text-lg;
+  }
+  
+  .grade-A { @apply bg-green-500 text-white; }
+  .grade-B { @apply bg-blue-500 text-white; }
+  .grade-C { @apply bg-yellow-500 text-gray-900; }
+  .grade-D { @apply bg-orange-500 text-white; }
+  .grade-F { @apply bg-red-500 text-white; }
+  
+  .job-card {
+    @apply bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200;
+  }
+  
+  .skeleton {
+    @apply animate-pulse bg-gray-200 rounded;
+  }
+  
+  .chip {
+    @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-medium;
+  }
+  
+  .chip-green { @apply bg-green-100 text-green-800; }
+  .chip-red { @apply bg-red-100 text-red-800; }
+  .chip-yellow { @apply bg-yellow-100 text-yellow-800; }
+  .chip-gray { @apply bg-gray-100 text-gray-800; }
+  .chip-purple { @apply bg-purple-100 text-purple-800; }
+  
+  .modal {
+    @apply hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4;
+  }
+  
+  .modal.active {
+    @apply flex;
+  }
+  
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200;
+  }
+  
+  .btn-primary {
+    @apply bg-blue-600 text-white hover:bg-blue-700;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-200 text-gray-800 hover:bg-gray-300;
+  }
+  
+  .btn-success {
+    @apply bg-green-600 text-white hover:bg-green-700;
+  }
+  
+  .btn-danger {
+    @apply bg-red-600 text-white hover:bg-red-700;
+  }
+
+  .btn-purple {
+    @apply bg-purple-600 text-white hover:bg-purple-700;
+  }
+  
+  .filter-btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200 border-2;
+  }
+  
+  .filter-btn.active {
+    @apply bg-blue-600 text-white border-blue-600;
+  }
+  
+  .filter-btn:not(.active) {
+    @apply bg-white text-gray-700 border-gray-300 hover:border-blue-600;
+  }
+
+  .tab-btn {
+    @apply px-6 py-3 font-semibold text-sm transition-colors duration-200 border-b-2;
+  }
+
+  .tab-btn.active {
+    @apply text-blue-600 border-blue-600;
+  }
+
+  .tab-btn:not(.active) {
+    @apply text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300;
+  }
+
+  .funnel-stage {
+    @apply flex items-center justify-center text-white font-bold rounded-lg py-4 text-center;
+  }
+
+  .notes-section {
+    @apply border-t border-gray-100 mt-4 pt-3;
+  }
+
+  .highlight-row {
+    @apply bg-green-50 font-semibold;
+  }
+</style>
+</head>
+<body class="bg-gray-50">
+
+<!-- Header -->
+<header class="bg-white border-b border-gray-200 sticky top-0 z-40">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">JobPilot V3</h1>
+        <p class="text-sm text-gray-600">Find & Recommend Dashboard</p>
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="text-sm text-gray-600">
+          <span class="font-medium">Last Scan:</span> <span id="lastScan">--</span>
+        </div>
+        <div class="text-sm text-gray-600">
+          <span class="font-medium">Next Scan:</span> <span id="nextScan">--</span>
+        </div>
+      </div>
+    </div>
+    <!-- Navigation Tabs -->
+    <div class="flex gap-0 mt-4 -mb-4 border-b border-gray-200" id="navTabs">
+      <button class="tab-btn active" data-tab="jobs" onclick="switchTab('jobs', this)">Jobs</button>
+      <button class="tab-btn" data-tab="analytics" onclick="switchTab('analytics', this)">Analytics</button>
+    </div>
+  </div>
+</header>
+
+<!-- Jobs Tab Content -->
+<main id="jobsTabContent" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  
+  <!-- Statistics Cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="text-sm font-medium text-gray-600 mb-1">Total Jobs</div>
+      <div class="text-3xl font-bold text-gray-900" id="stat-total">0</div>
+    </div>
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="text-sm font-medium text-gray-600 mb-1">A-Grade Jobs</div>
+      <div class="text-3xl font-bold text-green-600" id="stat-a-grade">0</div>
+    </div>
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="text-sm font-medium text-gray-600 mb-1">B-Grade Jobs</div>
+      <div class="text-3xl font-bold text-blue-600" id="stat-b-grade">0</div>
+    </div>
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="text-sm font-medium text-gray-600 mb-1">Applied</div>
+      <div class="text-3xl font-bold text-purple-600" id="stat-applied">0</div>
+    </div>
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="text-sm font-medium text-gray-600 mb-1">Pending Review</div>
+      <div class="text-3xl font-bold text-orange-600" id="stat-pending">0</div>
+    </div>
+  </div>
+
+  <!-- Filters and Search -->
+  <div class="bg-white rounded-lg shadow p-6 mb-8">
+    <div class="flex flex-col lg:flex-row gap-4">
+      
+      <!-- Grade Filters -->
+      <div class="flex-1">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Grade</label>
+        <div class="flex flex-wrap gap-2">
+          <button class="filter-btn active" data-filter-type="grade" data-filter-value="All" onclick="applyFilter('grade', 'All', this)">
+            All <span class="ml-1 text-xs" id="count-all">0</span>
+          </button>
+          <button class="filter-btn" data-filter-type="grade" data-filter-value="A" onclick="applyFilter('grade', 'A', this)">
+            A <span class="ml-1 text-xs" id="count-A">0</span>
+          </button>
+          <button class="filter-btn" data-filter-type="grade" data-filter-value="B" onclick="applyFilter('grade', 'B', this)">
+            B <span class="ml-1 text-xs" id="count-B">0</span>
+          </button>
+          <button class="filter-btn" data-filter-type="grade" data-filter-value="C" onclick="applyFilter('grade', 'C', this)">
+            C <span class="ml-1 text-xs" id="count-C">0</span>
+          </button>
+          <button class="filter-btn" data-filter-type="grade" data-filter-value="D" onclick="applyFilter('grade', 'D', this)">
+            D <span class="ml-1 text-xs" id="count-D">0</span>
+          </button>
+          <button class="filter-btn" data-filter-type="grade" data-filter-value="F" onclick="applyFilter('grade', 'F', this)">
+            F <span class="ml-1 text-xs" id="count-F">0</span>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Status Filters -->
+      <div class="flex-1">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Status</label>
+        <div class="flex flex-wrap gap-2">
+          <button class="filter-btn active" data-filter-type="status" data-filter-value="All" onclick="applyFilter('status', 'All', this)">
+            All <span class="ml-1 text-xs" id="count-status-all">0</span>
+          </button>
+          <button class="filter-btn" data-filter-type="status" data-filter-value="New" onclick="applyFilter('status', 'New', this)">
+            New <span class="ml-1 text-xs" id="count-status-new">0</span>
+          </button>
+          <button class="filter-btn" data-filter-type="status" data-filter-value="Reviewed" onclick="applyFilter('status', 'Reviewed', this)">
+            Reviewed <span class="ml-1 text-xs" id="count-status-reviewed">0</span>
+          </button>
+          <button class="filter-btn" data-filter-type="status" data-filter-value="Applied" onclick="applyFilter('status', 'Applied', this)">
+            Applied <span class="ml-1 text-xs" id="count-status-applied">0</span>
+          </button>
+          <button class="filter-btn" data-filter-type="status" data-filter-value="Rejected" onclick="applyFilter('status', 'Rejected', this)">
+            Rejected <span class="ml-1 text-xs" id="count-status-rejected">0</span>
+          </button>
+          <button class="filter-btn" data-filter-type="status" data-filter-value="Archived" onclick="applyFilter('status', 'Archived', this)">
+            Archived <span class="ml-1 text-xs" id="count-status-archived">0</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search and Sort -->
+    <div class="mt-4 flex flex-col sm:flex-row gap-4">
+      <div class="flex-1">
+        <input 
+          type="text" 
+          id="searchInput" 
+          placeholder="Search by title, company, or platform..." 
+          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          oninput="handleSearch()"
+        >
+      </div>
+      <div>
+        <select 
+          id="sortSelect" 
+          class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          onchange="handleSort()"
+        >
+          <option value="score-desc">Score (High to Low)</option>
+          <option value="score-asc">Score (Low to High)</option>
+          <option value="date-desc">Date (Newest First)</option>
+          <option value="date-asc">Date (Oldest First)</option>
+          <option value="platform-asc">Platform (A-Z)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div id="loadingState" class="hidden">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="job-card p-6">
+        <div class="skeleton h-10 w-10 rounded-full mb-4"></div>
+        <div class="skeleton h-6 w-3/4 mb-2"></div>
+        <div class="skeleton h-4 w-1/2 mb-4"></div>
+        <div class="skeleton h-4 w-full mb-2"></div>
+        <div class="skeleton h-4 w-full mb-2"></div>
+        <div class="skeleton h-4 w-2/3"></div>
+      </div>
+      <div class="job-card p-6">
+        <div class="skeleton h-10 w-10 rounded-full mb-4"></div>
+        <div class="skeleton h-6 w-3/4 mb-2"></div>
+        <div class="skeleton h-4 w-1/2 mb-4"></div>
+        <div class="skeleton h-4 w-full mb-2"></div>
+        <div class="skeleton h-4 w-full mb-2"></div>
+        <div class="skeleton h-4 w-2/3"></div>
+      </div>
+      <div class="job-card p-6">
+        <div class="skeleton h-10 w-10 rounded-full mb-4"></div>
+        <div class="skeleton h-6 w-3/4 mb-2"></div>
+        <div class="skeleton h-4 w-1/2 mb-4"></div>
+        <div class="skeleton h-4 w-full mb-2"></div>
+        <div class="skeleton h-4 w-full mb-2"></div>
+        <div class="skeleton h-4 w-2/3"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error State -->
+  <div id="errorState" class="hidden bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+    <div class="text-red-600 text-lg font-semibold mb-2">Failed to load jobs</div>
+    <p class="text-red-600 mb-4" id="errorMessage"></p>
+    <button onclick="loadJobs()" class="btn btn-primary">Retry</button>
+  </div>
+
+  <!-- Empty State -->
+  <div id="emptyState" class="hidden bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
+    <div class="text-gray-400 text-6xl mb-4">📭</div>
+    <div class="text-gray-600 text-lg font-semibold mb-2">No jobs found</div>
+    <p class="text-gray-500">Try adjusting your filters or check back later</p>
+  </div>
+
+  <!-- Job Cards Grid -->
+  <div id="jobsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  </div>
+</main>
+
+<!-- Analytics Tab Content -->
+<div id="analyticsTabContent" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  
+  <!-- Grade Trends Chart -->
+  <div class="bg-white rounded-lg shadow p-6 mb-8">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">Grade Trends (Last 30 Days)</h2>
+    <div class="relative" style="height: 350px;">
+      <canvas id="gradeTrendsChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Platform Performance Table -->
+  <div class="bg-white rounded-lg shadow p-6 mb-8">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">Platform Performance</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm text-left" id="platformTable">
+        <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+          <tr>
+            <th class="px-6 py-3">Platform</th>
+            <th class="px-6 py-3">Total</th>
+            <th class="px-6 py-3">Avg Score</th>
+            <th class="px-6 py-3">A-Grade</th>
+            <th class="px-6 py-3">Conversion Rate</th>
+          </tr>
+        </thead>
+        <tbody id="platformTableBody">
+          <tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Application Funnel -->
+  <div class="bg-white rounded-lg shadow p-6 mb-8">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">Application Funnel</h2>
+    <div id="funnelContainer" class="space-y-4">
+      <p class="text-gray-500 text-center">Loading...</p>
+    </div>
+  </div>
+</div>
+
+<!-- Screenshot Modal -->
+<div id="screenshotModal" class="modal" onclick="closeScreenshotModal()">
+  <div class="bg-white rounded-lg max-w-5xl w-full max-h-[90vh] overflow-auto" onclick="event.stopPropagation()">
+    <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+      <h3 class="text-lg font-semibold text-gray-900">Job Screenshot</h3>
+      <button onclick="closeScreenshotModal()" class="text-gray-400 hover:text-gray-600">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+    <div class="p-6">
+      <img id="screenshotImage" src="" alt="Job Screenshot" class="w-full h-auto">
+    </div>
+  </div>
+</div>
+
+<!-- Report Modal -->
+<div id="reportModal" class="modal" onclick="closeReportModal()">
+  <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto" onclick="event.stopPropagation()">
+    <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+      <h3 class="text-lg font-semibold text-gray-900">Evaluation Report</h3>
+      <button onclick="closeReportModal()" class="text-gray-400 hover:text-gray-600">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+    <div id="reportContent" class="p-6 prose max-w-none">
+    </div>
+  </div>
+</div>
+
+<!-- Tailoring Modal -->
+<div id="tailoringModal" class="modal" onclick="closeTailoringModal()">
+  <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto" onclick="event.stopPropagation()">
+    <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+      <h3 class="text-lg font-semibold text-gray-900">CV Tailoring Package</h3>
+      <button onclick="closeTailoringModal()" class="text-gray-400 hover:text-gray-600">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+    <div id="tailoringContent" class="p-6 prose max-w-none">
+    </div>
+    <div class="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex gap-3">
+      <button onclick="copyCvSnippet()" class="btn btn-purple text-sm">Copy CV Snippet</button>
+      <button onclick="copyCoverOpening()" class="btn btn-purple text-sm">Copy Cover Opening</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast" class="hidden fixed bottom-4 right-4 bg-gray-900 text-white px-6 py-3 rounded-lg shadow-lg z-50">
+  <span id="toastMessage"></span>
+</div>
+
+<script>
+// ============================================================
+// JobPilot V3 Dashboard — JavaScript
+// ============================================================
+
+// Configuration
+const CONFIG = {
+  API_URL: 'https://1i518kzmi9.execute-api.ap-south-1.amazonaws.com/prod/jobs',
+  ANALYTICS_URL: 'https://1i518kzmi9.execute-api.ap-south-1.amazonaws.com/prod/analytics',
+  REFRESH_INTERVAL: 5 * 60 * 1000,
+};
+
+// State
+let allJobs = [];
+let filteredJobs = [];
+let currentFilters = {
+  grade: 'All',
+  status: 'All',
+  search: '',
+  sort: 'score-desc',
+};
+let currentTailoringMarkdown = '';
+let gradeTrendsChart = null;
+
+// ============================================================
+// INITIALIZATION
+// ============================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('[Dashboard] Initializing...');
+  
+  const savedSort = localStorage.getItem('jobpilot-sort');
+  if (savedSort) {
+    currentFilters.sort = savedSort;
+    document.getElementById('sortSelect').value = savedSort;
+  }
+  
+  // Restore active tab from localStorage
+  const savedTab = localStorage.getItem('jobpilot-active-tab') || 'jobs';
+  const tabBtn = document.querySelector(`[data-tab="${savedTab}"]`);
+  if (tabBtn) {
+    switchTab(savedTab, tabBtn);
+  }
+  
+  loadJobs();
+  setInterval(loadJobs, CONFIG.REFRESH_INTERVAL);
+  updateNextScanTime();
+  setInterval(updateNextScanTime, 60000);
+});
+
+// ============================================================
+// TAB NAVIGATION
+// ============================================================
+
+function switchTab(tabName, button) {
+  // Update tab buttons
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  button.classList.add('active');
+  
+  // Show/hide content
+  const jobsContent = document.getElementById('jobsTabContent');
+  const analyticsContent = document.getElementById('analyticsTabContent');
+  
+  if (tabName === 'jobs') {
+    jobsContent.classList.remove('hidden');
+    analyticsContent.classList.add('hidden');
+  } else if (tabName === 'analytics') {
+    jobsContent.classList.add('hidden');
+    analyticsContent.classList.remove('hidden');
+    loadAnalytics();
+  }
+  
+  localStorage.setItem('jobpilot-active-tab', tabName);
+}
+
+// ============================================================
+// DATA LOADING
+// ============================================================
+
+async function loadJobs() {
+  console.log('[Dashboard] Loading jobs...');
+  showLoading();
+  hideError();
+  hideEmpty();
+  
+  try {
+    const response = await fetch(CONFIG.API_URL);
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    
+    const data = await response.json();
+    allJobs = data.jobs || [];
+    console.log(`[Dashboard] Loaded ${allJobs.length} jobs`);
+    
+    updateStatistics();
+    applyFiltersAndRender();
+    hideLoading();
+    
+    if (allJobs.length > 0) {
+      const latestJob = allJobs.reduce((latest, job) => {
+        return job.foundAt > latest.foundAt ? job : latest;
+      }, allJobs[0]);
+      document.getElementById('lastScan').textContent = formatRelativeTime(latestJob.foundAt);
+    }
+  } catch (error) {
+    console.error('[Dashboard] Failed to load jobs:', error);
+    showError(error.message);
+    hideLoading();
+  }
+}
+
+// ============================================================
+// STATISTICS
+// ============================================================
+
+function updateStatistics() {
+  const total = allJobs.length;
+  const aGrade = allJobs.filter(j => j.grade === 'A').length;
+  const bGrade = allJobs.filter(j => j.grade === 'B').length;
+  const applied = allJobs.filter(j => j.status === 'Applied').length;
+  const pending = allJobs.filter(j => j.status === 'New').length;
+  
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-a-grade').textContent = aGrade;
+  document.getElementById('stat-b-grade').textContent = bGrade;
+  document.getElementById('stat-applied').textContent = applied;
+  document.getElementById('stat-pending').textContent = pending;
+  
+  document.getElementById('count-all').textContent = total;
+  document.getElementById('count-A').textContent = aGrade;
+  document.getElementById('count-B').textContent = bGrade;
+  document.getElementById('count-C').textContent = allJobs.filter(j => j.grade === 'C').length;
+  document.getElementById('count-D').textContent = allJobs.filter(j => j.grade === 'D').length;
+  document.getElementById('count-F').textContent = allJobs.filter(j => j.grade === 'F').length;
+  
+  document.getElementById('count-status-all').textContent = total;
+  document.getElementById('count-status-new').textContent = pending;
+  document.getElementById('count-status-reviewed').textContent = allJobs.filter(j => j.status === 'Reviewed').length;
+  document.getElementById('count-status-applied').textContent = applied;
+  document.getElementById('count-status-rejected').textContent = allJobs.filter(j => j.status === 'Rejected').length;
+  document.getElementById('count-status-archived').textContent = allJobs.filter(j => j.status === 'Archived').length;
+}
+
+// ============================================================
+// FILTERING AND SORTING
+// ============================================================
+
+function applyFilter(type, value, button) {
+  currentFilters[type] = value;
+  const buttons = document.querySelectorAll(`[data-filter-type="${type}"]`);
+  buttons.forEach(btn => btn.classList.remove('active'));
+  button.classList.add('active');
+  applyFiltersAndRender();
+}
+
+function handleSearch() {
+  currentFilters.search = document.getElementById('searchInput').value.toLowerCase();
+  applyFiltersAndRender();
+}
+
+function handleSort() {
+  currentFilters.sort = document.getElementById('sortSelect').value;
+  localStorage.setItem('jobpilot-sort', currentFilters.sort);
+  applyFiltersAndRender();
+}
+
+function applyFiltersAndRender() {
+  filteredJobs = [...allJobs];
+  
+  if (currentFilters.grade !== 'All') {
+    filteredJobs = filteredJobs.filter(job => job.grade === currentFilters.grade);
+  }
+  if (currentFilters.status !== 'All') {
+    filteredJobs = filteredJobs.filter(job => job.status === currentFilters.status);
+  }
+  if (currentFilters.search) {
+    filteredJobs = filteredJobs.filter(job => {
+      const s = currentFilters.search;
+      return (
+        job.title?.toLowerCase().includes(s) ||
+        job.company?.toLowerCase().includes(s) ||
+        job.platform?.toLowerCase().includes(s)
+      );
+    });
+  }
+  sortJobs();
+  renderJobs();
+}
+
+function sortJobs() {
+  filteredJobs.sort((a, b) => {
+    switch (currentFilters.sort) {
+      case 'score-desc': return (b.totalScore || 0) - (a.totalScore || 0);
+      case 'score-asc': return (a.totalScore || 0) - (b.totalScore || 0);
+      case 'date-desc': return (b.foundAt || 0) - (a.foundAt || 0);
+      case 'date-asc': return (a.foundAt || 0) - (b.foundAt || 0);
+      case 'platform-asc': return (a.platform || '').localeCompare(b.platform || '');
+      default: return 0;
+    }
+  });
+}
+
+// ============================================================
+// RENDERING
+// ============================================================
+
+function renderJobs() {
+  const grid = document.getElementById('jobsGrid');
+  if (filteredJobs.length === 0) {
+    grid.innerHTML = '';
+    showEmpty();
+    return;
+  }
+  hideEmpty();
+  grid.innerHTML = filteredJobs.map(job => createJobCard(job)).join('');
+}
+
+function createJobCard(job) {
+  const strengths = job.evaluation?.strengths || [];
+  const redFlags = job.evaluation?.redFlags || [];
+  const topStrengths = strengths.slice(0, 3);
+  const notes = job.notes || [];
+  const noteCount = notes.length;
+  const hasReminder = job.reminderDate && job.reminderDate !== '';
+  const hasTailoring = job.tailoringUrl && job.tailoringUrl !== '';
+  
+  return `
+    <div class="job-card p-6" id="job-card-${job.jobId}">
+      <!-- Header -->
+      <div class="flex items-start justify-between mb-4">
+        <div class="grade-badge grade-${job.grade || 'F'}">
+          ${job.grade || 'F'}
+        </div>
+        <div class="text-right">
+          <div class="text-xs text-gray-500">${job.platform || 'Unknown'}</div>
+          <div class="text-xs text-gray-500">${formatRelativeTime(job.foundAt)}</div>
+        </div>
+      </div>
+      
+      <!-- Job Info -->
+      <h3 class="text-lg font-semibold text-gray-900 mb-1">${escapeHtml(job.title || 'Untitled')}</h3>
+      <p class="text-sm text-gray-600 mb-2">${escapeHtml(job.company || 'Unknown Company')}</p>
+      
+      <div class="flex items-center gap-4 text-sm text-gray-600 mb-4">
+        <div>${escapeHtml(job.location || 'Location N/A')}</div>
+        ${job.salary ? `<div>&bull;</div><div>${escapeHtml(job.salary)}</div>` : ''}
+      </div>
+      
+      <!-- Score -->
+      <div class="mb-4">
+        <div class="flex items-center justify-between text-sm mb-1">
+          <span class="text-gray-600">Match Score</span>
+          <span class="font-semibold text-gray-900">${(job.totalScore || 0).toFixed(2)}/5.0</span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2">
+          <div class="bg-blue-600 h-2 rounded-full" style="width: ${((job.totalScore || 0) / 5 * 100)}%"></div>
+        </div>
+      </div>
+      
+      <!-- Screenshot Thumbnail -->
+      ${job.screenshotUrl ? `
+        <div class="mb-4">
+          <img 
+            src="${job.screenshotUrl}" 
+            alt="Job Screenshot" 
+            class="w-full h-32 object-cover rounded border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
+            onclick="openScreenshotModal('${job.screenshotUrl}')"
+            loading="lazy"
+          >
+        </div>
+      ` : ''}
+      
+      <!-- Strengths -->
+      ${topStrengths.length > 0 ? `
+        <div class="mb-4">
+          <div class="text-xs font-medium text-gray-700 mb-2">Top Strengths</div>
+          <div class="flex flex-wrap gap-1">
+            ${topStrengths.map(s => `<span class="chip chip-green">${escapeHtml(s)}</span>`).join('')}
+          </div>
+        </div>
+      ` : ''}
+      
+      <!-- Red Flags -->
+      ${redFlags.length > 0 ? `
+        <div class="mb-4">
+          <div class="text-xs font-medium text-gray-700 mb-2">Red Flags</div>
+          <div class="flex flex-wrap gap-1">
+            ${redFlags.map(f => `<span class="chip chip-red">${escapeHtml(f)}</span>`).join('')}
+          </div>
+        </div>
+      ` : ''}
+      
+      <!-- Status & Reminder Badges -->
+      <div class="mb-4 flex flex-wrap gap-2">
+        <span class="chip chip-gray">Status: ${job.status || 'New'}</span>
+        ${hasReminder ? `<span class="chip chip-purple">Reminder: ${job.reminderDate}</span>` : ''}
+      </div>
+      
+      <!-- Actions Row 1 -->
+      <div class="flex flex-wrap gap-2">
+        <button onclick="applyOnPlatform('${job.url}')" class="btn btn-primary text-sm flex-1">Apply</button>
+        <button onclick="viewReport('${job.jobId}')" class="btn btn-secondary text-sm flex-1">View Report</button>
+      </div>
+      
+      <!-- Actions Row 2 -->
+      <div class="flex flex-wrap gap-2 mt-2">
+        ${hasTailoring ? `
+          <button onclick="viewTailoring('${job.jobId}')" class="btn btn-purple text-sm flex-1">View Tailoring</button>
+        ` : ''}
+        <button onclick="toggleReminderPicker('${job.jobId}')" class="btn btn-secondary text-sm flex-1">Set Reminder</button>
+      </div>
+      
+      <!-- Reminder Date Picker (hidden by default) -->
+      <div id="reminder-picker-${job.jobId}" class="hidden mt-2 flex gap-2 items-center">
+        <input type="date" id="reminder-date-${job.jobId}" min="${new Date().toISOString().split('T')[0]}" class="px-3 py-1 border border-gray-300 rounded-lg text-sm flex-1">
+        <button onclick="confirmReminder('${job.jobId}')" class="btn btn-success text-sm">Confirm</button>
+      </div>
+      
+      <!-- Actions Row 3 -->
+      <div class="flex flex-wrap gap-2 mt-2">
+        ${job.status !== 'Applied' ? `
+          <button onclick="markApplied('${job.jobId}')" class="btn btn-success text-sm flex-1">Mark Applied</button>
+        ` : ''}
+        ${job.status !== 'Rejected' ? `
+          <button onclick="rejectJob('${job.jobId}')" class="btn btn-danger text-sm flex-1">Reject</button>
+        ` : ''}
+        ${job.status !== 'Archived' ? `
+          <button onclick="archiveJob('${job.jobId}')" class="btn btn-secondary text-sm flex-1">Archive</button>
+        ` : ''}
+      </div>
+      
+      <!-- Notes Section -->
+      <div class="notes-section">
+        <button onclick="toggleNotes('${job.jobId}')" class="text-sm font-medium text-gray-700 flex items-center gap-2 w-full text-left">
+          <span>Notes</span>
+          ${noteCount > 0 ? `<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-100 text-blue-800 text-xs font-bold">${noteCount}</span>` : ''}
+          <svg id="notes-chevron-${job.jobId}" class="w-4 h-4 ml-auto transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+        <div id="notes-panel-${job.jobId}" class="hidden mt-3">
+          <!-- Existing notes -->
+          <div id="notes-list-${job.jobId}" class="space-y-2 mb-3 max-h-40 overflow-y-auto">
+            ${notes.map(n => `
+              <div class="bg-gray-50 rounded p-2 text-sm">
+                <p class="text-gray-800">${escapeHtml(n.text)}</p>
+                <p class="text-xs text-gray-400 mt-1">${formatRelativeTime(new Date(n.createdAt).getTime())}</p>
+              </div>
+            `).join('')}
+            ${noteCount === 0 ? '<p class="text-xs text-gray-400">No notes yet</p>' : ''}
+          </div>
+          <!-- Add note form -->
+          <div class="flex gap-2">
+            <input type="text" id="note-input-${job.jobId}" placeholder="Add a note..." class="flex-1 px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" onkeydown="if(event.key==='Enter')addNote('${job.jobId}')">
+            <button onclick="addNote('${job.jobId}')" class="btn btn-primary text-sm py-1">Add Note</button>
+          </div>
+          <p id="note-validation-${job.jobId}" class="hidden text-xs text-red-500 mt-1">Note text cannot be empty</p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================
+// JOB ACTIONS
+// ============================================================
+
+function applyOnPlatform(url) {
+  if (!url) { showToast('Job URL not available'); return; }
+  window.open(url, '_blank');
+}
+
+async function viewReport(jobId) {
+  const job = allJobs.find(j => j.jobId === jobId);
+  if (!job) { showToast('Job not found'); return; }
+  
+  if (job.status === 'New') {
+    await updateJobStatus(jobId, 'Reviewed', false);
+  }
+  
+  if (!job.reportUrl) { showToast('Report not available'); return; }
+  
+  try {
+    const response = await fetch(job.reportUrl);
+    if (!response.ok) throw new Error('Failed to fetch report');
+    const markdown = await response.text();
+    document.getElementById('reportContent').innerHTML = marked.parse(markdown);
+    document.getElementById('reportModal').classList.add('active');
+  } catch (error) {
+    console.error('[Dashboard] Failed to load report:', error);
+    showToast('Failed to load report');
+  }
+}
+
+async function markApplied(jobId) { await updateJobStatus(jobId, 'Applied', true); }
+async function rejectJob(jobId) { await updateJobStatus(jobId, 'Rejected', true); }
+async function archiveJob(jobId) { await updateJobStatus(jobId, 'Archived', true); }
+
+async function updateJobStatus(jobId, newStatus, showNotification = true) {
+  try {
+    const response = await fetch(`${CONFIG.API_URL}/${jobId}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    
+    const job = allJobs.find(j => j.jobId === jobId);
+    if (job) job.status = newStatus;
+    
+    updateStatistics();
+    applyFiltersAndRender();
+    if (showNotification) showToast(`Job marked as ${newStatus}`);
+  } catch (error) {
+    console.error('[Dashboard] Failed to update status:', error);
+    showToast('Failed to update job status');
+  }
+}
+
+// ============================================================
+// TAILORING
+// ============================================================
+
+async function viewTailoring(jobId) {
+  const job = allJobs.find(j => j.jobId === jobId);
+  if (!job || !job.tailoringUrl) { showToast('Tailoring not available'); return; }
+  
+  try {
+    const response = await fetch(job.tailoringUrl);
+    if (!response.ok) throw new Error('Failed to fetch tailoring');
+    currentTailoringMarkdown = await response.text();
+    document.getElementById('tailoringContent').innerHTML = marked.parse(currentTailoringMarkdown);
+    document.getElementById('tailoringModal').classList.add('active');
+  } catch (error) {
+    console.error('[Dashboard] Failed to load tailoring:', error);
+    showToast('Failed to load tailoring package');
+  }
+}
+
+function closeTailoringModal() {
+  document.getElementById('tailoringModal').classList.remove('active');
+}
+
+function copyCvSnippet() {
+  const text = extractSection(currentTailoringMarkdown, '## CV Snippet', '## Cover Opening');
+  if (text) {
+    navigator.clipboard.writeText(text.trim());
+    showToast('Copied!', 2000);
+  } else {
+    showToast('CV Snippet section not found');
+  }
+}
+
+function copyCoverOpening() {
+  const text = extractSection(currentTailoringMarkdown, '## Cover Opening', null);
+  if (text) {
+    navigator.clipboard.writeText(text.trim());
+    showToast('Copied!', 2000);
+  } else {
+    showToast('Cover Opening section not found');
+  }
+}
+
+function extractSection(markdown, startHeader, endHeader) {
+  const startIdx = markdown.indexOf(startHeader);
+  if (startIdx === -1) return null;
+  const contentStart = startIdx + startHeader.length;
+  if (endHeader) {
+    const endIdx = markdown.indexOf(endHeader, contentStart);
+    if (endIdx === -1) return markdown.slice(contentStart);
+    return markdown.slice(contentStart, endIdx);
+  }
+  return markdown.slice(contentStart);
+}
+
+// ============================================================
+// NOTES
+// ============================================================
+
+function toggleNotes(jobId) {
+  const panel = document.getElementById(`notes-panel-${jobId}`);
+  const chevron = document.getElementById(`notes-chevron-${jobId}`);
+  panel.classList.toggle('hidden');
+  chevron.classList.toggle('rotate-180');
+}
+
+async function addNote(jobId) {
+  const input = document.getElementById(`note-input-${jobId}`);
+  const validation = document.getElementById(`note-validation-${jobId}`);
+  const text = input.value.trim();
+  
+  if (!text) {
+    validation.classList.remove('hidden');
+    return;
+  }
+  validation.classList.add('hidden');
+  
+  try {
+    const response = await fetch(`${CONFIG.API_URL}/${jobId}/notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    if (!response.ok) throw new Error('Failed to add note');
+    
+    const data = await response.json();
+    
+    // Update local state
+    const job = allJobs.find(j => j.jobId === jobId);
+    if (job) {
+      job.notes = data.notes || [];
+    }
+    
+    // Update notes list in UI
+    const notesList = document.getElementById(`notes-list-${jobId}`);
+    const newNote = { text, createdAt: new Date().toISOString() };
+    const noteHtml = `
+      <div class="bg-gray-50 rounded p-2 text-sm">
+        <p class="text-gray-800">${escapeHtml(text)}</p>
+        <p class="text-xs text-gray-400 mt-1">Just now</p>
+      </div>
+    `;
+    
+    // Remove "No notes yet" if present
+    const noNotes = notesList.querySelector('p.text-gray-400');
+    if (noNotes) noNotes.remove();
+    
+    notesList.insertAdjacentHTML('beforeend', noteHtml);
+    input.value = '';
+    showToast('Note added');
+  } catch (error) {
+    console.error('[Dashboard] Failed to add note:', error);
+    showToast('Failed to add note');
+  }
+}
+
+// ============================================================
+// REMINDERS
+// ============================================================
+
+function toggleReminderPicker(jobId) {
+  const picker = document.getElementById(`reminder-picker-${jobId}`);
+  picker.classList.toggle('hidden');
+}
+
+async function confirmReminder(jobId) {
+  const dateInput = document.getElementById(`reminder-date-${jobId}`);
+  const reminderDate = dateInput.value;
+  
+  if (!reminderDate) {
+    showToast('Please select a date');
+    return;
+  }
+  
+  try {
+    const response = await fetch(`${CONFIG.API_URL}/${jobId}/reminder`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reminderDate }),
+    });
+    if (!response.ok) throw new Error('Failed to set reminder');
+    
+    // Update local state
+    const job = allJobs.find(j => j.jobId === jobId);
+    if (job) {
+      job.reminderDate = reminderDate;
+    }
+    
+    // Re-render to show badge
+    applyFiltersAndRender();
+    showToast(`Reminder set for ${reminderDate}`);
+  } catch (error) {
+    console.error('[Dashboard] Failed to set reminder:', error);
+    showToast('Failed to set reminder');
+  }
+}
+
+// ============================================================
+// ANALYTICS
+// ============================================================
+
+async function loadAnalytics() {
+  await Promise.all([
+    loadGradeTrends(),
+    loadPlatformPerformance(),
+    loadFunnel(),
+  ]);
+}
+
+async function loadGradeTrends() {
+  try {
+    const response = await fetch(`${CONFIG.ANALYTICS_URL}/grades`);
+    if (!response.ok) throw new Error('Failed to fetch grade trends');
+    const data = await response.json();
+    renderGradeTrendsChart(data);
+  } catch (error) {
+    console.error('[Analytics] Grade trends error:', error);
+  }
+}
+
+function renderGradeTrendsChart(data) {
+  const ctx = document.getElementById('gradeTrendsChart').getContext('2d');
+  
+  if (gradeTrendsChart) {
+    gradeTrendsChart.destroy();
+  }
+  
+  const labels = data.map(d => d.date);
+  
+  gradeTrendsChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'A', data: data.map(d => d.A), borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', tension: 0.3 },
+        { label: 'B', data: data.map(d => d.B), borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.3 },
+        { label: 'C', data: data.map(d => d.C), borderColor: '#eab308', backgroundColor: 'rgba(234,179,8,0.1)', tension: 0.3 },
+        { label: 'D', data: data.map(d => d.D), borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.1)', tension: 0.3 },
+        { label: 'F', data: data.map(d => d.F), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', tension: 0.3 },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        x: { title: { display: true, text: 'Date' } },
+        y: { title: { display: true, text: 'Count' }, beginAtZero: true },
+      },
+    },
+  });
+}
+
+async function loadPlatformPerformance() {
+  try {
+    const response = await fetch(`${CONFIG.ANALYTICS_URL}/platforms`);
+    if (!response.ok) throw new Error('Failed to fetch platform data');
+    const data = await response.json();
+    renderPlatformTable(data);
+  } catch (error) {
+    console.error('[Analytics] Platform performance error:', error);
+  }
+}
+
+function renderPlatformTable(data) {
+  const tbody = document.getElementById('platformTableBody');
+  
+  if (!data || data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">No platform data available</td></tr>';
+    return;
+  }
+  
+  // Find top-performing platform (highest avgScore)
+  const topPlatform = data.reduce((best, p) => p.avgScore > best.avgScore ? p : best, data[0]);
+  
+  tbody.innerHTML = data.map(p => `
+    <tr class="${p.platform === topPlatform.platform ? 'highlight-row' : 'bg-white border-b'}">
+      <td class="px-6 py-4 font-medium text-gray-900">${escapeHtml(p.platform)}${p.platform === topPlatform.platform ? ' ⭐' : ''}</td>
+      <td class="px-6 py-4">${p.total}</td>
+      <td class="px-6 py-4">${p.avgScore}</td>
+      <td class="px-6 py-4">${p.aGradeCount}</td>
+      <td class="px-6 py-4">${p.conversionRate}%</td>
+    </tr>
+  `).join('');
+}
+
+async function loadFunnel() {
+  try {
+    const response = await fetch(`${CONFIG.ANALYTICS_URL}/funnel`);
+    if (!response.ok) throw new Error('Failed to fetch funnel data');
+    const data = await response.json();
+    renderFunnel(data);
+  } catch (error) {
+    console.error('[Analytics] Funnel error:', error);
+  }
+}
+
+function renderFunnel(data) {
+  const container = document.getElementById('funnelContainer');
+  const found = data.found || 0;
+  const reviewed = data.reviewed || 0;
+  const applied = data.applied || 0;
+  const rejected = data.rejected || 0;
+  const archived = data.archived || 0;
+  const avgDays = data.newToAppliedDays || 0;
+  
+  const reviewedPct = found > 0 ? ((reviewed / found) * 100).toFixed(1) : 0;
+  const appliedPct = reviewed > 0 ? ((applied / reviewed) * 100).toFixed(1) : 0;
+  
+  container.innerHTML = `
+    <div class="flex flex-col items-center gap-2">
+      <!-- Found -->
+      <div class="funnel-stage bg-blue-500 w-full max-w-lg" style="font-size: 1.1rem;">
+        Found: ${found}
+      </div>
+      <div class="text-sm text-gray-500">${reviewedPct}% conversion</div>
+      
+      <!-- Reviewed -->
+      <div class="funnel-stage bg-blue-400 w-full max-w-md">
+        Reviewed: ${reviewed}
+      </div>
+      <div class="text-sm text-gray-500">${appliedPct}% conversion</div>
+      
+      <!-- Applied -->
+      <div class="funnel-stage bg-green-500 w-full max-w-sm">
+        Applied: ${applied}
+      </div>
+    </div>
+    
+    <div class="grid grid-cols-3 gap-4 mt-6">
+      <div class="bg-red-50 rounded-lg p-4 text-center">
+        <div class="text-2xl font-bold text-red-600">${rejected}</div>
+        <div class="text-sm text-red-600">Rejected</div>
+      </div>
+      <div class="bg-gray-50 rounded-lg p-4 text-center">
+        <div class="text-2xl font-bold text-gray-600">${archived}</div>
+        <div class="text-sm text-gray-600">Archived</div>
+      </div>
+      <div class="bg-blue-50 rounded-lg p-4 text-center">
+        <div class="text-2xl font-bold text-blue-600">${avgDays}</div>
+        <div class="text-sm text-blue-600">Avg Days (New→Applied)</div>
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================
+// MODALS
+// ============================================================
+
+function openScreenshotModal(url) {
+  document.getElementById('screenshotImage').src = url;
+  document.getElementById('screenshotModal').classList.add('active');
+}
+
+function closeScreenshotModal() {
+  document.getElementById('screenshotModal').classList.remove('active');
+}
+
+function closeReportModal() {
+  document.getElementById('reportModal').classList.remove('active');
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeScreenshotModal();
+    closeReportModal();
+    closeTailoringModal();
+  }
+});
+
+// ============================================================
+// UI STATE MANAGEMENT
+// ============================================================
+
+function showLoading() {
+  document.getElementById('loadingState').classList.remove('hidden');
+  document.getElementById('jobsGrid').classList.add('hidden');
+}
+
+function hideLoading() {
+  document.getElementById('loadingState').classList.add('hidden');
+  document.getElementById('jobsGrid').classList.remove('hidden');
+}
+
+function showError(message) {
+  document.getElementById('errorMessage').textContent = message;
+  document.getElementById('errorState').classList.remove('hidden');
+  document.getElementById('jobsGrid').classList.add('hidden');
+}
+
+function hideError() {
+  document.getElementById('errorState').classList.add('hidden');
+}
+
+function showEmpty() {
+  document.getElementById('emptyState').classList.remove('hidden');
+}
+
+function hideEmpty() {
+  document.getElementById('emptyState').classList.add('hidden');
+}
+
+function showToast(message, duration = 3000) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toastMessage').textContent = message;
+  toast.classList.remove('hidden');
+  setTimeout(() => { toast.classList.add('hidden'); }, duration);
+}
+
+// ============================================================
+// UTILITY FUNCTIONS
+// ============================================================
+
+function formatRelativeTime(timestamp) {
+  if (!timestamp) return 'Unknown';
+  const now = Date.now();
+  const diff = now - timestamp;
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  
+  if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
+  if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+  return 'Just now';
+}
+
+function updateNextScanTime() {
+  const now = new Date();
+  const nextRun = new Date();
+  nextRun.setUTCHours(3, 30, 0, 0);
+  if (now.getTime() > nextRun.getTime()) {
+    nextRun.setDate(nextRun.getDate() + 1);
+  }
+  const diff = nextRun.getTime() - now.getTime();
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  document.getElementById('nextScan').textContent = `${hours}h ${minutes}m`;
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// ============================================================
+// ERROR HANDLING
+// ============================================================
+
+window.addEventListener('error', (event) => {
+  console.error('[Dashboard] Global error:', event.error);
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('[Dashboard] Unhandled promise rejection:', event.reason);
+});
+
+console.log('[Dashboard] Script loaded successfully');
+</script>
+
+</body>
+</html>

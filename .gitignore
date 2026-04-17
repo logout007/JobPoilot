@@ -1,0 +1,18 @@
+node_modules/
+lambda.zip
+*.tfvars
+cv.txt
+
+# Build artifacts
+build/
+
+# Terraform
+.terraform/
+infra/.terraform/
+*.tfstate
+*.tfstate.backup
+
+# Large/unnecessary binaries
+planetvpn.exe
+*.exe
+*.zip
