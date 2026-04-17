@@ -153,6 +153,47 @@ export default async function scrape(browser, credentials) {
     });
 
     console.log(`[WeWorkRemotely] ${validJobs.length} valid jobs found (${jobs.length - validJobs.length} discarded)`);
+
+    // Extract descriptions inline — visiting each job page in the same
+    // browser session avoids Cloudflare challenges that block fresh visits.
+    for (const job of validJobs) {
+      try {
+        await page.goto(job.url, { waitUntil: 'domcontentloaded', timeout: 20000 });
+        await delay(1500);
+
+        job.description = await page.evaluate(() => {
+          // WWR job detail selectors
+          const selectors = [
+            '.listing-container',
+            '.job-listing-content',
+            '#job-listing-show-container',
+            '.listing-header-container',
+            '[class*="listing"]',
+            '.content',
+            'article',
+            'main',
+          ];
+          for (const sel of selectors) {
+            const el = document.querySelector(sel);
+            if (el) {
+              const text = (el.innerText || el.textContent || '').trim();
+              if (text.length > 100) return text.substring(0, 5000);
+            }
+          }
+          // Fallback: strip boilerplate and grab body
+          const clone = document.body.cloneNode(true);
+          clone.querySelectorAll('script, style, nav, header, footer, aside').forEach(el => el.remove());
+          const body = (clone.innerText || clone.textContent || '').trim();
+          return body.substring(0, 5000);
+        });
+
+        console.log(`[WeWorkRemotely] Extracted ${(job.description || '').length} chars for ${job.jobId}`);
+      } catch (err) {
+        console.error(`[WeWorkRemotely] Description extraction failed for ${job.jobId}:`, err.message);
+        job.description = '';
+      }
+    }
+
     return validJobs;
   } catch (error) {
     console.error('[WeWorkRemotely] Scraper failed:', error.message);

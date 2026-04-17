@@ -329,8 +329,10 @@ async function processJobs(browser, jobs) {
       // Human-like delay
       await delay(1000 + Math.random() * 2000);
 
-      // Extract job description
-      job.description = await extractJobDescription(page);
+      // Extract job description (skip if already extracted during scraping)
+      if (!job.description || job.description.length < 100) {
+        job.description = await extractJobDescription(page);
+      }
 
       // Capture screenshot and upload to S3
       const screenshotBuffer = await captureScreenshot(page, job.jobId);
